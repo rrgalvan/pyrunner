@@ -55,7 +55,7 @@ class PyRunner(object):
     """
     Class for running generic programs
     """
-    def __init__(self, program, path="", args={}):
+    def __init__(self, program, path=".", args={}):
         "Build a script, a program contained in a file"
         self.program = program
         self.path = path # Program path
@@ -126,7 +126,7 @@ class ScriptRunner(PyRunner):
     Class for executing scripts, in the sense of short programs
     which are run by an interpreter
     """
-    def __init__(self, program, path="", args={},\
+    def __init__(self, program, path=".", args={},\
                      interpreter="", intepreter_args={}):
         PyRunner.__init__(self, program, path, args)
         self.interpreter = interpreter
@@ -168,7 +168,7 @@ class FreeFemRunner(ScriptRunner):
     """
     Class for executing FreeFem++ scripts
     """
-    def __init__(self, program, path="", args={},\
+    def __init__(self, program, path=".", args={},\
                      interpreter="FreeFem++",
                      interpreter_args={"-ne":"", "-nw":"", "-cd":"" }):
         ScriptRunner.__init__(self, program, path, args,\
