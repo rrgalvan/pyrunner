@@ -62,6 +62,9 @@ class PyRunner(object):
         self.args = args # Arguments passed to the program
         self.set_command(program, path, args)
 
+        self.save_output=True # Save output lines, by default, when running this program
+        self.output_lines=[] # Array of lines from the output of the program
+
     def set_interpreter(self, interpreter):
         "Define the name of the intepreted which is used to run the script"
         self.interpreter = interpreter
@@ -106,7 +109,17 @@ class PyRunner(object):
             line = process.stdout.readline()
             if not line:
                 break
+            if self.save_output:
+                self.output_lines.append(line)
             yield OutputLine(line.decode('UTF-8').rstrip())
+
+    def print_output(self):
+        "Print the output of the program"
+        if(self.save_output):
+            for line in self.output_lines:
+                print(line.decode('UTF-8').rstrip())
+        else:
+            print("Sorry, the output of the program was not saved")
 
 class ScriptRunner(PyRunner):
     """
@@ -137,6 +150,19 @@ class ScriptRunner(PyRunner):
         # 2. Prepend it to script name, path and args
         self.command = command + " " + self.command
         return self.command
+
+    def print_code(self):
+        """
+        Output the code lines of current script
+        """
+        path = self.path.rstrip("/") + "/"
+        file_name = path + self.program
+        # print("Printing file %s" % file_name)
+        # print("---------------------------------------------------------------------------\n")
+        f = open(file_name)
+        for file_line in f:
+            print(file_line.rstrip())
+
 
 class FreeFemRunner(ScriptRunner):
     """
