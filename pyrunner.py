@@ -21,6 +21,9 @@ methods for running it, capturing its output and post-processing it
 from subprocess import Popen, PIPE
 import re
 
+# C-like structure in Python
+from collections import namedtuple
+
 class OutputLine(object):
     """
     A line from console output of any program
@@ -51,6 +54,61 @@ class OutputLine(object):
         return self.find(data)
 
 
+class Iteration(object):
+    """"
+    Class defining each iteration
+    It stores
+       * A string defining the format which identifies begin of one interation
+       * Value, type and format, for each the data stored in current iteration
+    """
+    def __init__(self, begin_str="iteration"):
+        self.begin_format = begin_str # String identifyng begin of iteration
+        self.value={} # Dictionary for store data values
+        self.type={} # Dictionary for store data values
+        self.format={} # Dictionary for store format used to find data
+
+    def begin(self, line):
+        "Look if current line contains begin of iteration"
+        return line.find(self.begin_format)
+
+    def data_identifiers():
+        "Return list of identifiers for current data"
+        return self.value.keys()
+
+    def add_data(self, data_id, data_format, data_type=None):
+        """
+        Store, for each iteration, some data (for instance a real number).
+          data_format: Format used to find the data in program output.
+          data_id: String identifying, in each iteration, the number.
+        """
+        self.value[data_id] = None
+        self.format[data_id] = data_format
+        self.type[data_id] = data_type
+
+    def reset_data(self):
+        for data_id in self.data_identifiers():
+            self.value[data_id] = None
+
+    def find(self, data_id, line):
+        data_format = self.format[data_id]
+        result = None
+        if(self.type[data_id]==float):
+           result = line.find_float(data_format)
+        if(self.type[data_id]==int):
+           result = line.find_int(data_format)
+        return result
+
+class Iterator(object):
+    """
+    An iterator stores an iteration object and counts the number of iterations
+    """
+    def __init__(self, iteration):
+        self.current_iteration = iteration # Current iteration
+        self.count = 0 # Iteration counter
+
+    def increase(self):
+        self.count = self.count+1
+
 class PyRunner(object):
     """
     Class for running generic programs
@@ -61,6 +119,7 @@ class PyRunner(object):
         self.path = path # Program path
         self.args = args # Arguments passed to the program
         self.set_command(program, path, args)
+        self.iterator = None
 
         self.save_output=True # Save output lines, by default, when running this program
         self.output_lines=[] # Array of lines from the output of the program
@@ -88,6 +147,9 @@ class PyRunner(object):
         self.args = args_dict
         self.set_command(self.program, self.path, self.args)
 
+    def set_iterator(self, iterator):
+        self.iterator = iterator
+
     def run(self, output=OutputLine):
         "Run the program (selecting from different options for running)"
         if output==None:
@@ -112,6 +174,39 @@ class PyRunner(object):
             if self.save_output:
                 self.output_lines.append(line)
             yield OutputLine(line.decode('UTF-8').rstrip())
+
+
+    def run_get_iterations(self):
+        "Run the program, yielding *realtime* iterations"
+        command = self.get_command()
+        iteration = self.iterator.current_iteration
+        process = Popen(command, stdout=PIPE , shell=True)
+
+        in_some_iteration = False
+        current_line = process.stdout.readline()
+        # Look for begin of iteration
+        print(current_line)
+        while current_line and not iteration.begin(current_line):
+            current_line = process.stdout.readline()
+        start_new_iteration=True
+        while current_line and start_new_iteration:  # Start loop on iterations
+            start_new_iteration=False
+            self.iterator.increase()
+            iteration.reset_data()
+            while current_line and not start_new_iteration: # loop on lines in current iteration
+                for data_id in iteration.data_identifiers(): # For each data stored:
+                    value_found = iteration.find(data_id, current_line) # Is data in current line?
+                    if value_found: # Store the value found
+                        print("Found, data_found=%s, data_id=%s, data_type=%s"\
+                                    % (data_found, data_id, data_type) )
+                        data_type = iteration.type[data_id]
+                        iteration.value[data_id] = data_type(valu_found)
+                    current_line = process.stdout.readline()
+                    if current_line and iteration.begin(current_line):
+                        start_new_iteration = True
+            print("Yielding iteration")
+            yield iteration
+
 
     def print_output(self):
         "Print the output of the program"
