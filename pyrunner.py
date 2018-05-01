@@ -113,11 +113,12 @@ class PyRunner(object):
     """
     Class for running generic programs
     """
-    def __init__(self, program, path=".", args={}):
+    def __init__(self, program, path="", args={}):
         "Build a script, a program contained in a file"
         self.program = program
         self.path = path # Program path
         self.args = args # Arguments passed to the program
+        self.arg_separator=' ' # Char used to separe key from value in arguments
         self.set_command(program, path, args)
         self.iterator = None
 
@@ -133,10 +134,13 @@ class PyRunner(object):
         return self.command
 
     def set_command(self, program, path, args):
-        path = self.path.rstrip("/") + "/"
+        if path:
+            path = self.path.rstrip("/") + "/"
+        else:
+            path =""
         self.command = path + self.program
         for k in self.args.keys():
-            self.command = self.command + " " + k + " " + str(self.args[k])
+            self.command = self.command + " " + k + self.arg_separator + str(self.args[k])
         return self.command
 
     def set_args(self,args_dict):
